@@ -1,16 +1,27 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 # Create your models here.
 
 class UserProfile(models.Model):
-    user = models.OneToOneField('auth.User', on_delete=models.CASCADE)  # Links to Django's User model
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='userprofile')  # Links to Django's User model
     profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
     steps_goal = models.IntegerField(default=10000)
     hydration_goal = models.IntegerField(default=64)
 
     def __str__(self):
         return self.user.username
+    
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    instance.userprofile.save()
     
 class Allergy(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
@@ -46,6 +57,9 @@ class TriviaQuestion(models.Model):
     correct_answer = models.CharField(max_length=255)
     wrong_answers = models.JSONField()  # Store a list of wrong answers
 
+    def __str__(self):
+        return self.question
+
 class UserTriviaProgress(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     question = models.ForeignKey(TriviaQuestion, on_delete=models.CASCADE)
@@ -56,10 +70,20 @@ class HydrationLog(models.Model):
     date = models.DateField(auto_now_add=True)
     water_intake = models.IntegerField(default=0)  # Amount in oz.
 
+    def __str__(self):
+        return f"{self.user.user.username} - {self.date} - {self.water_intake} oz"
+
 class ExerciseLog(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     date = models.DateField(auto_now_add=True)
-    exercise = models.CharField(max_length=255)
+    exercise_type = models.CharField(max_length=255)
+    duration_minutes = models.IntegerField(default=0)  # Duration in minutes
+    steps = models.IntegerField(default=0)  # Optional: Steps taken during the activity
+    calories_burned = models.IntegerField(default=0)  # Calories burned during the activity
+    heart_rate = models.FloatField(default=0.0)  # Average heart rate during the activity
+
+    def __str__(self):
+        return f"{self.user.user.username} - {self.exercise_type} ({self.date})"
 
 class ClinicalVisit(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
@@ -69,3 +93,19 @@ class ClinicalVisit(models.Model):
         ('recent', 'Recent'),
         ('previous', 'Previous')
     ])
+
+class PassportCategory(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    category_name = models.CharField(max_length=255)
+    details = models.TextField()
+
+    def __str__(self):
+        return f"{self.user.user.username} - {self.category_name}"
+    
+class ChatMessage(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.user.username}: {self.message[:50]}"
