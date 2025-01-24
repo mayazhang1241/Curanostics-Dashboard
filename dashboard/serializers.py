@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import UserProfile, HydrationLog, ExerciseLog, TriviaQuestion, PassportCategory, Allergy, Immunization, Medication, Doctor, ChatMessage
+from .models import UserProfile, HydrationLog, ExerciseLog, StepTracker, TriviaQuestion, PassportCategory, Allergy, Immunization, Medication, Doctor, ChatMessage, ClinicalVisit
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -9,17 +9,26 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class HydrationLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = HydrationLog
-        fields = '__all__'
+        fields = ['id', 'user', 'water_intake', 'date']
+        read_only_fields = ['id', 'user', 'date']
 
 class ExerciseLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExerciseLog
-        fields = '__all__'
+        fields = ['id', 'user', 'exercise_type', 'duration_minutes', 'calories_burned', 'date']
+        read_only_fields = ['id', 'user', 'date']
+
+class StepTrackerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StepTracker
+        fields = ['id', 'user', 'steps', 'date']
+        read_only_fields = ['id', 'user', 'date']
 
 class TriviaQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = TriviaQuestion
-        fields = '__all__'
+        fields = ['id', 'question', 'correct_answer', 'wrong_answers']
+        read_only_fields = ['id']
 
 class PassportCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -51,3 +60,9 @@ class ChatMessageSerializer(serializers.ModelSerializer):
         model = ChatMessage
         fields = ['id', 'user', 'message', 'timestamp']
         read_only_fields = ['id', 'user', 'timestamp']
+
+class ClinicalVisitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClinicalVisit
+        fields = ['id', 'user', 'visit_type', 'visit_date']
+        read_only_fields = ['id', 'user']

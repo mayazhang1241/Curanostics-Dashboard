@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 
@@ -50,12 +51,19 @@ class Doctor(models.Model):
 class StepTracker(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     date = models.DateField(auto_now_add=True)
-    steps = models.IntegerField(default=0)
+    steps = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-date']
 
 class TriviaQuestion(models.Model):
     question = models.TextField()
     correct_answer = models.CharField(max_length=255)
     wrong_answers = models.JSONField()  # Store a list of wrong answers
+
+    def clean(self):
+        if not isinstance(self.wrong_answers, list):
+            raise ValidationError("Wrong answers must be a list of strings.")
 
     def __str__(self):
         return self.question
@@ -80,10 +88,9 @@ class ExerciseLog(models.Model):
     duration_minutes = models.IntegerField(default=0)  # Duration in minutes
     steps = models.IntegerField(default=0)  # Optional: Steps taken during the activity
     calories_burned = models.IntegerField(default=0)  # Calories burned during the activity
-    heart_rate = models.FloatField(default=0.0)  # Average heart rate during the activity
 
-    def __str__(self):
-        return f"{self.user.user.username} - {self.exercise_type} ({self.date})"
+    class Meta:
+        ordering = ['-date']
 
 class ClinicalVisit(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
@@ -93,6 +100,9 @@ class ClinicalVisit(models.Model):
         ('recent', 'Recent'),
         ('previous', 'Previous')
     ])
+
+    class Meta:
+        ordering = ['-visit_date']
 
 class PassportCategory(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)

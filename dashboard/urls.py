@@ -8,6 +8,9 @@ urlpatterns = [
     # User Profile
     path('api/user-profiles/', UserProfileView.as_view(), name='user-profiles'),
 
+    # Step Tracker
+    path('step-tracker/', views.StepTrackerAPIView.as_view(), name='step-tracker-api'),
+
     # Logs
     path('api/hydration-logs/', HydrationLogAPIView.as_view(), name='hydration-logs'),
     path('api/exercise-logs/', ExerciseLogAPIView.as_view(), name='exercise-logs'),
@@ -25,5 +28,8 @@ urlpatterns = [
     path('api/doctors/', DoctorAPIView.as_view(), name='doctors'),
 
     # ChatBot
-    path('chat/', ChatAPIView.as_view(), name='chat')
+    path('chat/', ChatAPIView.as_view(), name='chat'),
+
+    # Clinical Visits
+    path('clinical-visits/', views.ClinicalVisitAPIView.as_view(), name='clinical-visits-api'),
 ]

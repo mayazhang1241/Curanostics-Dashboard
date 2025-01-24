@@ -1,11 +1,14 @@
+import random
 from django.shortcuts import render
 from django.http import HttpResponse
-from .models import UserProfile, HydrationLog, ExerciseLog, TriviaQuestion, PassportCategory, Allergy, Immunization, Medication, Doctor, ChatMessage
+from .models import UserProfile, HydrationLog, ExerciseLog, StepTracker, TriviaQuestion, PassportCategory, Allergy, Immunization, Medication, Doctor, ChatMessage, ClinicalVisit
+import logging
+import requests
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from .serializers import UserProfileSerializer, HydrationLogSerializer, ExerciseLogSerializer, TriviaQuestionSerializer, PassportCategorySerializer, AllergySerializer, ImmunizationSerializer, MedicationSerializer, DoctorSerializer, ChatMessageSerializer
+from .serializers import UserProfileSerializer, HydrationLogSerializer, ExerciseLogSerializer, StepTrackerSerializer, TriviaQuestionSerializer, PassportCategorySerializer, AllergySerializer, ImmunizationSerializer, MedicationSerializer, DoctorSerializer, ChatMessageSerializer, ClinicalVisitSerializer
 
 # Create your views here.
 
@@ -19,6 +22,8 @@ class UserProfileView(APIView):
         return Response(serializer.data)
     
 class HydrationLogAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         logs = HydrationLog.objects.all()
         serializer = HydrationLogSerializer(logs, many=True)
@@ -32,6 +37,8 @@ class HydrationLogAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class ExerciseLogAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         logs = ExerciseLog.objects.all()
         serializer = ExerciseLogSerializer(logs, many=True)
@@ -44,11 +51,102 @@ class ExerciseLogAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-class TriviaQuestionAPIView(APIView):
+class StepTrackerAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        questions = TriviaQuestion.objects.all()
-        serializer = TriviaQuestionSerializer(questions, many=True)
+        steps = StepTracker.objects.filter(user=request.user.userprofile).order_by('-date')
+        serializer = StepTrackerSerializer(steps, many=True)
         return Response(serializer.data)
+    
+    def post(self, request):
+        serializer = StepTrackerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user.userprofile)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+logger = logging.getLogger(__name__)
+
+class TriviaQuestionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Use OpenFDA API to fetch trivia questions dynamically
+        external_api_url = "https://api.fda.gov/drug/event.json?search=serious:1&limit=20"
+
+        try:
+            response = requests.get(external_api_url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get("results", [])
+
+                # Retrieve the user's session data
+                session = request.session
+                answered_questions = session.get("answered_questions", [])
+
+                # Collect all unique reactions
+                all_reactions = [
+                    reaction.get("reactionmeddrapt", "Unknown")
+                    for item in results
+                    for reaction in item.get("patient", {}).get("reaction", [])
+                ]
+
+                # Define diverse question templates
+                question_templates = [
+                    "What is a reported reaction to a drug?",
+                    "Which of these reactions has been reported in adverse events?",
+                    "Identify the correct reaction from the options below.",
+                    "What is one possible adverse reaction from the FDA database?",
+                    "Can you spot the reported reaction?",
+                    "Which reaction is listed in the database?",
+                    "A patient reported which of the following reactions?",
+                    "Select the correct adverse event from these options.",
+                    "Which of the following reactions has been marked as serious?",
+                    "Identify a reaction associated with adverse drug events."
+                ]
+
+                questions = []
+
+                for item in results:
+                    reactions = item.get("patient", {}).get("reaction", [])
+                    if reactions:
+                        correct_answer = reactions[0].get("reactionmeddrapt", "Unknown")
+
+                        # Skip already answered questions
+                        if correct_answer in answered_questions:
+                            continue
+
+                        wrong_answers = list(set(all_reactions) - {correct_answer})[:3]
+
+                        # Randomly select a question template
+                        question_text = random.choice(question_templates)
+
+                        question = {
+                            "question": question_text,
+                            "correct_answer": correct_answer,
+                            "wrong_answers": wrong_answers if len(wrong_answers) >= 3 else ["Unknown", "Other", "None"]
+                        }
+                        questions.append(question)
+
+                # If no new questions available, reset the session
+                if not questions:
+                    session["unanswered_questions"] = []
+                    session.save()
+                    return Response({"message": "All questions answered. Restarting trivia."}, status=status.HTTP_200_OK)
+
+                # Select one question randomly and update the session
+                selected_question = random.choice(questions)
+                answered_questions.append(selected_question["correct_answer"])
+                session["answered_questions"] = answered_questions
+                session.save()
+
+                return Response(selected_question, status=status.HTTP_200_OK)
+                
+            else:
+                return Response({"error": "Failed to fetch trivia questions"}, status=response.status_code)
+        except requests.exceptions.RequestException as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 class PassportCategoryAPIView(APIView):
     def get(self, request):
@@ -145,4 +243,19 @@ class ChatAPIView(APIView):
             serializer.save(user=user_profile)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         print(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class ClinicalVisitAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        visits = ClinicalVisit.objects.filter(user=request.user.userprofile).order_by('-visit_date')
+        serializer = ClinicalVisitSerializer(visits, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        serializer = ClinicalVisitSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user.userprofile)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
