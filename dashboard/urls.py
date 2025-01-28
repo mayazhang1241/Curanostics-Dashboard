@@ -9,11 +9,11 @@ urlpatterns = [
     path('api/user-profiles/', UserProfileView.as_view(), name='user-profiles'),
 
     # Step Tracker
-    path('step-tracker/', views.StepTrackerAPIView.as_view(), name='step-tracker-api'),
+    path('api/steps/', views.StepTrackerAPIView.as_view(), name='step-tracker-api'),
 
     # Logs
-    path('api/hydration-logs/', HydrationLogAPIView.as_view(), name='hydration-logs'),
-    path('api/exercise-logs/', ExerciseLogAPIView.as_view(), name='exercise-logs'),
+    path('api/hydration-logs/', HydrationLogAPIView.as_view(), name='hydration-log-api'),
+    path('api/exercise-logs/', ExerciseLogAPIView.as_view(), name='exercise-log-api'),
 
     # Trivia
     path('api/trivia-questions/', TriviaQuestionAPIView.as_view(), name='trivia-questions'),

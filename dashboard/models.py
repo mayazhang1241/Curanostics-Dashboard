@@ -50,11 +50,17 @@ class Doctor(models.Model):
 
 class StepTracker(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
-    date = models.DateField(auto_now_add=True)
+    date = models.DateField()
     steps = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['-date']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'date'],
+                name='unique_user_date_step'
+            )
+        ]
 
 class TriviaQuestion(models.Model):
     question = models.TextField()
@@ -76,21 +82,30 @@ class UserTriviaProgress(models.Model):
 class HydrationLog(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     date = models.DateField(auto_now_add=True)
-    water_intake = models.IntegerField(default=0)  # Amount in oz.
-
-    def __str__(self):
-        return f"{self.user.user.username} - {self.date} - {self.water_intake} oz"
-
-class ExerciseLog(models.Model):
-    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
-    date = models.DateField(auto_now_add=True)
-    exercise_type = models.CharField(max_length=255)
-    duration_minutes = models.IntegerField(default=0)  # Duration in minutes
-    steps = models.IntegerField(default=0)  # Optional: Steps taken during the activity
-    calories_burned = models.IntegerField(default=0)  # Calories burned during the activity
+    water_intake = models.FloatField(default=0.0)  # Amount in oz.
+    goal = models.FloatField(default=64.0)  # Default goal in liters (adjustable by the user)
 
     class Meta:
         ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.user} - {self.date}: {self.water_intake}L"
+
+class ExerciseLog(models.Model):
+    EXERCISE_CHOICES = [
+        ('Running', 'Running'),
+        ('Cycling', 'Cycling'),
+        ('Yoga', 'Yoga'),
+        ('Swimming', 'Swimming'),
+        ('Weightlifting', 'Weightlifting'),
+    ]
+
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    date = models.DateField(auto_now_add=True)
+    exercise_type = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f"{self.user} - {self.exercise_type} on {self.date}"
 
 class ClinicalVisit(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)

@@ -9,7 +9,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class HydrationLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = HydrationLog
-        fields = ['id', 'user', 'water_intake', 'date']
+        fields = ['id', 'user', 'water_intake', 'goal', 'date']
         read_only_fields = ['id', 'user', 'date']
 
 class ExerciseLogSerializer(serializers.ModelSerializer):

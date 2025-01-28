@@ -25,23 +25,46 @@ class HydrationLogAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        logs = HydrationLog.objects.all()
-        serializer = HydrationLogSerializer(logs, many=True)
-        return Response(serializer.data)
+        try:
+            hydration_logs = HydrationLog.objects.filter(
+                user=request.user.userprofile
+            ).order_by('-date')
+
+            print(f"Found {hydration_logs.count()} logs")
+
+            serializer = HydrationLogSerializer(hydration_logs, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            print(f"Error in get: {str(e)}")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     def post(self, request):
-        serializer = HydrationLogSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            print(f"Received data: {request.data}")
+
+            serializer = HydrationLogSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(user=request.user.userprofile)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            print(f"Validation errors: {serializer.errors}")  # Debug print
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"Error in post: {str(e)}")
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
 class ExerciseLogAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        logs = ExerciseLog.objects.all()
-        serializer = ExerciseLogSerializer(logs, many=True)
+        exercise_logs = ExerciseLog.objects.all()
+        serializer = ExerciseLogSerializer(exercise_logs, many=True)
         return Response(serializer.data)
     
     def post(self, request):
