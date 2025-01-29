@@ -1,12 +1,18 @@
 from django.urls import path
+from django.conf import settings
+from django.conf.urls.static import static
 from . import views
-from .views import UserProfileView, HydrationLogAPIView, ExerciseLogAPIView, TriviaQuestionAPIView, PassportCategoryAPIView, AllergyAPIView, ImmunizationAPIView, MedicationAPIView, DoctorAPIView, ChatAPIView
+from .views import ProfileView, HydrationLogAPIView, ExerciseLogAPIView, TriviaQuestionAPIView, PassportCategoryAPIView, AllergyAPIView, ImmunizationAPIView, MedicationAPIView, DoctorAPIView, ChatAPIView, PassportCategoryDetailAPIView
 
 urlpatterns = [
     path('', views.home, name='home'),  # Route for the homepage
 
     # User Profile
-    path('api/user-profiles/', UserProfileView.as_view(), name='user-profiles'),
+    path('auth/register/', views.RegisterView.as_view(), name='register'),
+    path('auth/login/', views.LoginView.as_view(), name='login'),
+    path('profile/', views.ProfileView.as_view(), name='profile'),
+    path('profile/change-password/', views.ChangePasswordView.as_view(), name='change-password'),
+    path('profile/upload-picture/', views.ProfilePictureView.as_view(), name='upload-picture'),
 
     # Step Tracker
     path('api/steps/', views.StepTrackerAPIView.as_view(), name='step-tracker-api'),
@@ -32,4 +38,9 @@ urlpatterns = [
 
     # Clinical Visits
     path('clinical-visits/', views.ClinicalVisitAPIView.as_view(), name='clinical-visits-api'),
-]
+
+    # Detailed Passport
+    path('api/passport-categories/<int:pk>/', 
+     PassportCategoryDetailAPIView.as_view(), 
+     name='passport-category-detail'),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

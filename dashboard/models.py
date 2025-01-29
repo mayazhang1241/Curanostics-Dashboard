@@ -9,19 +9,16 @@ from django.core.exceptions import ValidationError
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='userprofile')  # Links to Django's User model
     profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
-    steps_goal = models.IntegerField(default=10000)
-    hydration_goal = models.IntegerField(default=64)
+    birth_date = models.DateField(null=True, blank=True)
 
     def __str__(self):
-        return self.user.username
+        return f"{self.user.username}'s Profile"
     
+# Signal to create/update UserProfile when User is created/updated
 @receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
+def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
     instance.userprofile.save()
     
 class Allergy(models.Model):
@@ -103,6 +100,11 @@ class ExerciseLog(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     date = models.DateField(auto_now_add=True)
     exercise_type = models.CharField(max_length=255)
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+    calories_burned = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-date']
 
     def __str__(self):
         return f"{self.user} - {self.exercise_type} on {self.date}"
@@ -120,9 +122,25 @@ class ClinicalVisit(models.Model):
         ordering = ['-visit_date']
 
 class PassportCategory(models.Model):
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('completed', 'Completed')
+    ]
+
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     category_name = models.CharField(max_length=255)
-    details = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    last_case_date = models.DateField(null=True, blank=True)
+    details = models.TextField(blank=True, null=True)
+
+    # Add relationships to other models
+    allergies = models.ManyToManyField(Allergy, blank=True)
+    immunizations = models.ManyToManyField(Immunization, blank=True)
+    medications = models.ManyToManyField(Medication, blank=True)
+    doctors = models.ManyToManyField(Doctor, blank=True)
+
+    class Meta:
+        ordering = ['category_name']
 
     def __str__(self):
         return f"{self.user.user.username} - {self.category_name}"
